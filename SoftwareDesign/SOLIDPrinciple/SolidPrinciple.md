@@ -25,7 +25,7 @@ The **SOLID** principles are a set of five design principles in object-oriented 
 
 ### 1. Single Responsibility Principle (SRP)
 A class should have only one reason to change, meaning it should only have one job.  
-[See detailed SingleResposibilityPrinciple.md](SingleResposibilityPrinciple.md)
+[See detailed SingleResponsibilityPrinciple.md](SingleResponsibilityPrinciple.md)
 
 ---
 
@@ -43,7 +43,7 @@ Subtypes must be substitutable for their base types without altering the correct
 
 ### 4. Interface Segregation Principle (ISP)
 Clients should not be forced to implement interfaces they do not use.  
-[See detailed InterfaceSegmentedPrinciple.md](InterfaceSegmentedPrinciple.md)
+[See detailed InterfaceSegementedPrinciple.md](InterfaceSegementedPrinciple.md)
 
 ---
 
