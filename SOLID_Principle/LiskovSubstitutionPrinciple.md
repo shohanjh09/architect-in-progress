@@ -33,7 +33,7 @@ class Car extends Vehicle {
 class Bicycle extends Vehicle {
     @Override
     public boolean hasEngine() {
-        return false; // Bicycles do not have engines
+        return null; // Bicycles do not have engines
     }
 }
 
