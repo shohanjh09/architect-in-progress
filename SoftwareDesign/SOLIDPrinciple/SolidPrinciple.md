@@ -43,7 +43,7 @@ Subtypes must be substitutable for their base types without altering the correct
 
 ### 4. Interface Segregation Principle (ISP)
 Clients should not be forced to implement interfaces they do not use.  
-[See detailed InterfaceSegementedPrinciple.md](InterfaceSegementedPrinciple.md)
+[See detailed InterfaceSegregationPrinciple.md](InterfaceSegregationPrinciple.md)
 
 ---
 
