@@ -7,36 +7,36 @@ Each pattern entry links to a dedicated `.md` file with detailed explanation, co
 
 ## Creational Patterns
 - [Singleton](./Creational/Singleton.md)
-- [Factory Method](./Creational/Factory_Method.md)
-- [Abstract Factory](./Creational/Abstract_Factory.md)
-- [Builder](./Creational/Builder.md)
-- [Prototype](./Creational/Prototype.md)
+- [Factory Method](./Creational/factory_method.md)
+- [Abstract Factory](./Creational/abstract_factory.md)
+- [Builder](./Creational/builder.md)
+- [Prototype](./Creational/prototype.md)
 
 ---
 
 ## Structural Patterns
-- [Adapter](./Structural/Adapter.md)
-- [Bridge](./Structural/Bridge.md)
-- [Composite](./Structural/Composite.md)
-- [Decorator](./Structural/Decorator.md)
-- [Facade](./Structural/Facade.md)
-- [Flyweight](./Structural/Flyweight.md)
-- [Proxy](./Structural/Proxy.md)
+- [Adapter](./Structural/adapter.md)
+- [Bridge](./Structural/bridge.md)
+- [Composite](./Structural/composite.md)
+- [Decorator](./Structural/decorator.md)
+- [Facade](./Structural/facade.md)
+- [Flyweight](./Structural/flyweight.md)
+- [Proxy](./Structural/proxy.md)
 
 ---
 
 ## Behavioral Patterns
-- [Chain of Responsibility](./Behavioral/Chain_of_Responsibility.md)
-- [Command](./Behavioral/Command.md)
-- [Iterator](./Behavioral/Iterator.md)
-- [Mediator](./Behavioral/Mediator.md)
-- [Memento](./Behavioral/Memento.md)
-- [Observer](./Behavioral/Observer.md)
-- [State](./Behavioral/State.md)
-- [Strategy](./Behavioral/Strategy.md)
-- [Template Method](./Behavioral/Template_Method.md)
-- [Visitor](./Behavioral/Visitor.md)
-- [Interpreter](./Behavioral/Interpreter.md)
+- [Chain of Responsibility](./Behavioral/chain_of_responsibility.md)
+- [Command](./Behavioral/command.md)
+- [Iterator](./Behavioral/iterator.md)
+- [Mediator](./Behavioral/mediator.md)
+- [Memento](./Behavioral/memento.md)
+- [Observer](./Behavioral/observer.md)
+- [State](./Behavioral/state.md)
+- [Strategy](./Behavioral/strategy.md)
+- [Template Method](./Behavioral/template_method.md)
+- [Visitor](./Behavioral/visitor.md)
+- [Interpreter](./Behavioral/interpreter.md)
 
 ---
 
