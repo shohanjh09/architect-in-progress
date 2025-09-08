@@ -1,76 +1,43 @@
-# Factory Method (Creational)
+# Factory Method Design Pattern
 
-## Intent
-Define an interface for creating an object, but let subclasses decide which class to instantiate.  
-Factory Method lets a class defer instantiation to subclasses.
-
----
-
-## When to Use
-- You need to create objects but want subclasses to choose **which** concrete type.
-- You want to move construction logic out of the client to reduce coupling.
-- You anticipate adding new product types without modifying existing client code.
+## Definition
+> The **Factory Method Pattern** defines an interface for creating objects but lets subclasses decide which class to instantiate.  
+> It allows a class to defer instantiation to its subclasses.
 
 ---
 
-## Participants
-- **Product** – the interface/abstract type created by the factory (`Burger`)
-- **ConcreteProduct** – concrete implementations (`ClassicBurger`, `OrientalBurger`)
-- **Creator** – declares the factory method (`Restaurant#createBurger`)
-- **ConcreteCreator** – overrides the factory method to return a concrete product (`ClassicRestaurant`, `OrientalRestaurant`)
+## ✅ Key Characteristics
+- Defines a **common interface** for product creation.  
+- Subclasses decide **which concrete product** to instantiate.  
+- Promotes **loose coupling** between client code and concrete classes.  
+- Supports the **Open/Closed Principle** (easy to add new product types).  
+- Often used alongside the **Template Method Pattern** (factory method is the "hook").  
 
 ---
 
-## UML (Mermaid)
-
-```mermaid
-classDiagram
-    class Burger {
-      <<interface>>
-      +prepare() void
+## ❌ Problem Without Factory Method
+```java
+public class Restaurant {
+    public void orderBurger(String type) {
+        if (type.equals("Classic")) {
+            Burger burger = new ClassicBurger();
+            burger.prepare();
+        } else if (type.equals("Oriental")) {
+            Burger burger = new OrientalBurger();
+            burger.prepare();
+        }
     }
-
-    class ClassicBurger {
-      +prepare() void
-    }
-
-    class OrientalBurger {
-      +prepare() void
-    }
-
-    class Restaurant {
-      +orderBurger() void
-      #createBurger() Burger*
-    }
-
-    class ClassicRestaurant {
-      +createBurger() Burger
-    }
-
-    class OrientalRestaurant {
-      +createBurger() Burger
-    }
-
-    Burger <|.. ClassicBurger
-    Burger <|.. OrientalBurger
-    Restaurant <|-- ClassicRestaurant
-    Restaurant <|-- OrientalRestaurant
-    Restaurant --> Burger : creates
+}
 ```
+### 🚨 Problem
+- The `Restaurant` class is tightly coupled to `ClassicBurger` and `OrientalBurger`.  
+- Adding a new burger requires modifying `Restaurant` (violating Open/Closed Principle).  
 
 ---
 
-## Problem (Motivation)
-A restaurant system must produce different burger types. If client code uses `new` directly, every new burger variant forces client changes. We want to isolate **creation** so adding new burgers won’t ripple through the codebase.
-
----
-
-## Solution (Factory Method)
-
-> The creator (`Restaurant`) defines a **factory method** `createBurger()` that returns a `Burger`. Subclasses decide the concrete `Burger` to create.
+## ✅ Factory Method Solution
 
 ### Product Interface
-
 ```java
 public interface Burger {
     void prepare();
@@ -78,7 +45,6 @@ public interface Burger {
 ```
 
 ### Concrete Products
-
 ```java
 public class ClassicBurger implements Burger {
     @Override
@@ -95,14 +61,12 @@ public class OrientalBurger implements Burger {
 }
 ```
 
-### Creator (defines the factory method)
-
+### Creator (Abstract)
 ```java
 public abstract class Restaurant {
-
     public void orderBurger() {
         System.out.println("Ordering Burger...");
-        Burger burger = createBurger(); // Factory Method
+        Burger burger = createBurger();  // Factory Method
         burger.prepare();
     }
 
@@ -110,8 +74,7 @@ public abstract class Restaurant {
 }
 ```
 
-### Concrete Creators (choose the product)
-
+### Concrete Creators
 ```java
 public class ClassicRestaurant extends Restaurant {
     @Override
@@ -131,7 +94,6 @@ public class OrientalRestaurant extends Restaurant {
 ```
 
 ### Client Usage
-
 ```java
 public class App {
     public static void main(String[] args) {
@@ -156,51 +118,57 @@ Preparing Oriental Burger...
 
 ---
 
-## Consequences
-
-### Benefits
-- **Open/Closed Principle**: add new `Burger` types by introducing new `Restaurant` subclasses—no changes in client flow.
-- **Single Responsibility**: construction logic lives in creators; business flow (`orderBurger`) stays stable.
-- **Decoupling**: clients depend on the `Burger` interface, not concrete classes.
-
-### Trade-offs
-- **More classes**: each variant needs a new concrete creator.
-- **Indirection**: object creation path is less obvious than `new`.
+## 🔎 Explanation
+- `Restaurant` defines the **factory method** `createBurger()`.  
+- Subclasses (`ClassicRestaurant`, `OrientalRestaurant`) decide **which burger** to create.  
+- `orderBurger()` defines the general workflow (ordering, preparing), while allowing subclasses to vary the creation step.  
+- This eliminates `if-else` chains and improves extensibility.  
 
 ---
 
-## Implementation Notes
-- Keep factory method **protected** when only creators should call it; **public** if external callers may need to trigger creation.
-- You can pass **parameters** to the factory method if variations require data.
-- If your “creator” needs to switch among many products based on a parameter, consider **Simple Factory** first; migrate to Factory Method when subclassing brings clarity/extensibility.
+## 🎯 When to Use
+- When a class needs to delegate instantiation to subclasses.  
+- When you expect to add new product types in the future.  
+- When object creation logic should not be hardcoded in the client.  
 
 ---
 
-## Real-World Analogies
-- **Framework hooks**: A template method (`orderBurger`) calls a factory method (`createBurger`). Subclasses plug their specifics.
-- **Web controllers**: Base controller defines a method to build a response; specialized controllers override how the response is created.
+## UML Class Diagram
+```mermaid
+classDiagram
+    class Burger {
+        <<interface>>
+        +prepare() void
+    }
+
+    class ClassicBurger {
+        +prepare() void
+    }
+
+    class OrientalBurger {
+        +prepare() void
+    }
+
+    class Restaurant {
+        +orderBurger() void
+        #createBurger() Burger*
+    }
+
+    class ClassicRestaurant {
+        +createBurger() Burger
+    }
+
+    class OrientalRestaurant {
+        +createBurger() Burger
+    }
+
+    Burger <|.. ClassicBurger
+    Burger <|.. OrientalBurger
+    Restaurant <|-- ClassicRestaurant
+    Restaurant <|-- OrientalRestaurant
+    Restaurant --> Burger : creates
+```
 
 ---
 
-## Comparison
-- **Simple Factory**: one object decides which class to instantiate (no inheritance required).  
-- **Factory Method**: subclasses decide which class to instantiate (uses inheritance).  
-- **Abstract Factory**: creates **families** of related objects.
-
----
-
-## Checklist
-- [x] Define `Product` interface (`Burger`).
-- [x] Create concrete products (`ClassicBurger`, `OrientalBurger`).
-- [x] Define `Creator` with a factory method (`Restaurant#createBurger`).
-- [x] Implement concrete creators (`ClassicRestaurant`, `OrientalRestaurant`).
-- [x] Use `orderBurger()` to encapsulate the flow; `createBurger()` to vary the product.
-
----
-
-## Extending This Example
-- Add `CheeseBurger`, `VeganBurger` with matching `Restaurant` subclasses.
-- Add a `deliver()` step in `orderBurger()` to demonstrate fixed pipeline + variable creation.
-- Replace `System.out` prints with logging; or integrate persistence at service layers.
-
----
+✅ The **Factory Method Pattern** delegates product creation to subclasses, promoting flexibility, scalability, and adherence to SOLID principles.
