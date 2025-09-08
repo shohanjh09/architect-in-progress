@@ -1,8 +1,43 @@
-There are three type of design patterns: Creational, Structural, and Behavioral.
-Creational Patterns: provide more flexibility in how the objects are actually created.
-Structural Patterns: deal with how inheritance and composition can be used to provide extra functionality.
-Behavioral Patterns: are about communication and assignment of responsibilities between our objects.
+# Design Patterns Handbook
 
-In summary, design patterns used to speed up the development process by providing tested, proven development models. You may not notice it or may
-make use of it without knowing.
+This handbook is organized into **Creational**, **Structural**, and **Behavioral** design patterns.  
+Each pattern entry links to a dedicated `.md` file with detailed explanation, code, and UML diagrams.
 
+---
+
+## Creational Patterns
+- [Singleton](./Creational/Singleton.md)
+- [Factory Method](./Creational/Factory_Method.md)
+- [Abstract Factory](./Creational/Abstract_Factory.md)
+- [Builder](./Creational/Builder.md)
+- [Prototype](./Creational/Prototype.md)
+
+---
+
+## Structural Patterns
+- [Adapter](./Structural/Adapter.md)
+- [Bridge](./Structural/Bridge.md)
+- [Composite](./Structural/Composite.md)
+- [Decorator](./Structural/Decorator.md)
+- [Facade](./Structural/Facade.md)
+- [Flyweight](./Structural/Flyweight.md)
+- [Proxy](./Structural/Proxy.md)
+
+---
+
+## Behavioral Patterns
+- [Chain of Responsibility](./Behavioral/Chain_of_Responsibility.md)
+- [Command](./Behavioral/Command.md)
+- [Iterator](./Behavioral/Iterator.md)
+- [Mediator](./Behavioral/Mediator.md)
+- [Memento](./Behavioral/Memento.md)
+- [Observer](./Behavioral/Observer.md)
+- [State](./Behavioral/State.md)
+- [Strategy](./Behavioral/Strategy.md)
+- [Template Method](./Behavioral/Template_Method.md)
+- [Visitor](./Behavioral/Visitor.md)
+- [Interpreter](./Behavioral/Interpreter.md)
+
+---
+
+✅ Click on a pattern name above to open its detailed Markdown file.
