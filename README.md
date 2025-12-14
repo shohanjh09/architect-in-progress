@@ -36,4 +36,22 @@ My current focus is on two major learning tracks:
 
 ---
 
-✅ This roadmap ensures I build a **solid foundation in both theoretical concepts and practical implementations**, making me a stronger software architect.  
+## Databases
+
+- **[Database Deep Dive](./Database/SQL/database-deep-dive.md)** – Core concepts, normalization, indexing, transactions, JSON, backup, and NoSQL. Includes diagrams for ERD, backup/restore, query optimization, JSON, and normalization/denormalization.
+- **[Database Engineering Guide](./Database/SQL/database-engineering-guide.md)** – Engineering best practices, backup/restore, optimization, JSON in SQL, key-value columns, security, monitoring. Includes diagrams for system overview, SQL vs NoSQL, scaling, ACID, CAP, table structure, relationships, DDL/DML, index structure, transaction flow, backup/restore, security, and monitoring.
+- **[Normalization Deep Dive](./Database/SQL/normalization-deep-dive.md)** – Higher normalization forms (BCNF, 4NF, 5NF), denormalization strategies, practical examples. Includes diagrams for each normal form and denormalization.
+- **[Indexing & Query Optimization](./Database/SQL/indexing-and-query-optimization.md)** – Index types, composite indexes, execution plans, query optimization techniques, best practices. Includes diagrams for index structure, clustered vs non-clustered index, over-indexing, query execution plan, index not used, covering index, and index maintenance.
+- **[Transactions & Ledger Design](./Database/SQL/transactions-and-ledger-design.md)** – Transaction fundamentals, error handling, rollback, concurrency, deadlock management, ledger pattern, idempotency. Includes diagrams for ACID, isolation levels, deadlocks, ledger pattern, and idempotency.
+- **[High-Scale Read Architecture](./Database/SQL/high-scale-read-architecture.md)** – Read replicas, caching, archiving, partitioning, sharding, materialized views, pagination, observability. Includes diagrams for read pattern analysis, replica architecture, cache-aside, cache invalidation, materialized views, search pipeline, seek pagination, sharding, monitoring, and high-scale read system.
+- **[Messaging System DB Design](./Database/SQL/messaging-system-db-design.md)** – Messaging system DB patterns, queue tables, outbox pattern, scaling, read receipts, moderation, search. Includes ER diagrams for conversation/message schema, scaling, inbox, pagination, search, and system flow.
+- **[Payment System DB Design](./Database/SQL/payment-system-db-design.md)** – Payment system DB design, ledger, audit, reconciliation, idempotency, concurrency, auditing, best practices. Includes diagrams for double-entry ledger, idempotency, account relationships, outbox pattern, payment flow, balance calculation, locking, reconciliation, and safe payment system flow.
+
+**How to Use:**
+- Start with `Database Deep Dive` for foundational knowledge.
+- Use topic-specific files for deep dives and advanced patterns.
+- Refer to these files for interview prep, onboarding, and production reference.
+
+---
+
+✅ This roadmap ensures I build a **solid foundation in both theoretical concepts and practical implementations**, making me a stronger software architect.
