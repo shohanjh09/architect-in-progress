@@ -1,30 +1,38 @@
 # Payment System DB Design (High-Value, Production-Oriented)
 
-> Goal: design a payment/ledger database that is **auditable**, **idempotent**, and safe under retries, concurrency, and partial failures.
+> **Goal:** Design a payment/ledger database that is **auditable**, **idempotent**, and safe under retries, concurrency, and partial failures. This guide explains the schema, design principles, and real-world examples for robust, production-grade payment systems.
 
 ---
 
-## 1) Core Principles (Interview + Real World)
+## 1. Core Principles (Interview + Real World)
 
 ### 1.1 Never “just update balance”
-For money, you want an **append-only ledger** so you can:
-- Recompute balances
-- Audit every change
-- Detect fraud/bugs
-- Support chargebacks/refunds cleanly
+For money, always use an **append-only ledger**:
+- Allows recomputation of balances from history
+- Enables full audit trails for compliance and fraud detection
+- Supports chargebacks, refunds, and corrections cleanly
+
+**Example:**
+- Instead of `UPDATE accounts SET balance = balance - 100`, insert a new ledger entry recording the debit.
 
 ### 1.2 Idempotency is mandatory
-Payment gateways retry. Your workers retry. Users double-click.
-Your DB design must ensure **the same payment request cannot be applied twice**.
+Payment gateways and users may retry requests. Your DB must ensure **the same payment request cannot be applied twice**.
+
+**Example:**
+- Use an `idempotency_key` (unique per payment attempt) and enforce a unique constraint in the `payments` table. If a retry comes in, it is ignored or returns the same result.
 
 ### 1.3 Double-entry accounting mindset
-Each business event becomes balanced entries (debit/credit) across accounts.
+Every business event is recorded as balanced entries (debit/credit) across accounts.
+
+**Example:**
+- When a user pays, debit their account and credit the platform's escrow account.
 
 ---
 
-## 2) Minimum Schema (Relational)
+## 2. Minimum Schema (Relational)
 
 ### 2.1 Accounts (logical buckets of money)
+Each account represents a user, platform, vendor, or escrow. Uniqueness is enforced per owner and currency.
 ```sql
 CREATE TABLE accounts (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -38,8 +46,7 @@ CREATE TABLE accounts (
 ```
 
 ### 2.2 Ledger Entries (append-only)
-Each row represents one side of an accounting movement.
-
+Each row is a single side of a transaction (debit or credit). All money movement is recorded here.
 ```sql
 CREATE TABLE ledger_entries (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -58,6 +65,7 @@ CREATE TABLE ledger_entries (
 ```
 
 ### 2.3 Payments (gateway interaction)
+Tracks payment attempts, status, and idempotency.
 ```sql
 CREATE TABLE payments (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -78,7 +86,7 @@ CREATE TABLE payments (
 ```
 
 ### 2.4 Outbox (for reliable events)
-Ensures DB changes and message publication stay consistent.
+Implements the outbox pattern for reliable event publication (e.g., to message queues).
 ```sql
 CREATE TABLE outbox_events (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -94,13 +102,13 @@ CREATE TABLE outbox_events (
 
 ---
 
-## 3) Money Flow Examples
+## 3. Money Flow Examples
 
 ### 3.1 Buyer pays for an order (capture)
 - Buyer account: DEBIT
 - Platform escrow: CREDIT
 
-Pseudo-transaction (single DB transaction):
+**Pseudo-transaction (single DB transaction):**
 ```sql
 START TRANSACTION;
 
@@ -127,28 +135,28 @@ COMMIT;
 ### 3.2 Refund
 - Escrow: DEBIT
 - Buyer: CREDIT
-Keep it as a new txn (never mutate old entries).
+- Always record as a new transaction (never mutate old entries).
 
 ---
 
-## 4) Balance Calculation Options
+## 4. Balance Calculation Options
 
 ### 4.1 Compute-on-read (pure ledger)
+Recompute balance from all ledger entries for an account.
 ```sql
 SELECT
   SUM(CASE WHEN direction='CREDIT' THEN amount_cents ELSE -amount_cents END) AS balance_cents
 FROM ledger_entries
 WHERE account_id = 201 AND currency='USD';
 ```
-Pros: perfect audit. Cons: expensive at scale.
+**Pros:** Perfect audit. **Cons:** Expensive at scale.
 
 ### 4.2 Cached balance table (recommended at scale)
-Maintain `account_balances(account_id, balance_cents)` updated within same transaction.
-Still keep ledger as source of truth.
+Maintain `account_balances(account_id, balance_cents)` updated within the same transaction as ledger entries. Still keep the ledger as the source of truth.
 
 ---
 
-## 5) Concurrency, Locks, and Safety
+## 5. Concurrency, Locks, and Safety
 
 ### 5.1 Avoid race conditions
 If maintaining cached balances, use:
@@ -162,30 +170,29 @@ To reduce deadlocks:
 
 ---
 
-## 6) Auditing and Reconciliation
+## 6. Auditing and Reconciliation
 
 ### 6.1 Reconcile provider statements
-Store `provider_payment_id`, amounts, fees, timestamps.
-Compare gateway exports vs DB totals.
+Store `provider_payment_id`, amounts, fees, timestamps. Compare gateway exports vs DB totals for reconciliation.
 
 ### 6.2 Immutable logs
-Ledger is append-only. If a correction needed, add a correcting txn.
+Ledger is append-only. If a correction is needed, add a correcting transaction (never update or delete old entries).
 
 ---
 
-## 7) Interview Questions (What to say)
-- “How do you prevent double charge?” → **Idempotency key + unique constraint + transactional write**
-- “How do you ensure auditability?” → **Append-only ledger**
-- “What about eventual events?” → **Outbox pattern**
-- “How to scale balances?” → **Cached balances + ledger source of truth**
+## 7. Interview Questions (What to say)
+- **How do you prevent double charge?** → Idempotency key + unique constraint + transactional write
+- **How do you ensure auditability?** → Append-only ledger
+- **What about eventual events?** → Outbox pattern
+- **How to scale balances?** → Cached balances + ledger as source of truth
 
 ---
 
-## 8) Common Pitfalls
-- Using `FLOAT` for money
-- Updating balances without ledger
-- No idempotency keys
-- Handling webhooks without state machine
+## 8. Common Pitfalls
+- Using `FLOAT` for money (use integer cents)
+- Updating balances without a ledger
+- No idempotency keys (risk of double charge)
+- Handling webhooks without a state machine
 - Not testing refunds/chargebacks
 
 ---

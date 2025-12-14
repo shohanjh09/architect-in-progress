@@ -1,298 +1,137 @@
-# Database Deep Dive – Normalization, Indexing, Transactions & NoSQL
+# Database Deep Dive – Normalization, Indexing, Transactions, JSON, Backup, and NoSQL
 
-This document explains **WHY things are designed in a certain way**, with trade-offs and real-world examples. It is structured to help engineers understand not just the *what*, but the *why* and *how* of database design decisions.
+This document explains **WHY things are designed in a certain way**, with trade-offs, diagrams, and real-world examples. It is structured to help engineers understand not just the *what*, but the *why* and *how* of database design decisions.
 
 ---
 
-## 1. Normalization
+## 1. Database Design Principles
+- **Start with requirements:** What are the main entities, relationships, and access patterns?
+- **ER Diagrams:** Use Entity-Relationship diagrams to visualize tables and relationships.
+- **Normalization:** Apply 1NF, 2NF, 3NF, and higher forms to reduce redundancy.
+- **Denormalization:** Use for performance in read-heavy scenarios (see below).
+- **Choose data types carefully:** Use smallest valid types for performance and storage.
+- **Plan for growth:** Consider partitioning, sharding, and archiving strategies.
 
-**Normalization** is the process of organizing data to minimize redundancy and dependency. It improves data integrity and makes updates safer and more efficient.
+---
 
-### 1NF (First Normal Form)
-- **Rule:** Each column must contain only atomic (indivisible) values; no repeating groups or arrays.
-- **Bad Example:**
-  - `products = "mouse,keyboard"` (multiple values in one field)
-- **Good Example:**
-  - Use an `order_items` table with one row per product per order.
-- **SQL Example:**
+## 2. Backup Plan and Restore (Full & Incremental)
+
+### Full Backup
+- **Definition:** A complete copy of the database at a point in time.
+- **How to:**
+  - MySQL: `mysqldump -u user -p dbname > backup.sql`
+  - PostgreSQL: `pg_dump dbname > backup.sql`
+
+### Incremental Backup
+- **Definition:** Only backs up changes since the last backup (using binary logs or WAL).
+- **How to:**
+  - MySQL: Enable binary logging, use `mysqlbinlog` to replay changes.
+  - PostgreSQL: Use WAL archiving and `pg_basebackup` for point-in-time recovery.
+
+### Restore
+- **Full restore:** Load the full backup file into a new or existing database.
+- **Incremental restore:** Apply the full backup, then replay incremental logs.
+
+**Best Practice:** Always test restores regularly to ensure backups are valid.
+
+---
+
+## 3. Backup Details in Scripts
+- **Automate backups:** Use cron jobs or scheduled tasks to run backup scripts.
+- **Script example (Linux):**
+```bash
+#!/bin/bash
+DATE=$(date +%F)
+mysqldump -u user -p'password' dbname > /backups/dbname_$DATE.sql
+```
+- **Retention policy:** Keep daily, weekly, and monthly backups as needed.
+- **Monitor backup success:** Send alerts on failure.
+
+---
+
+## 4. Query Optimization & Index Plan
+
+### Query Optimization Plan
+- Use `EXPLAIN` to analyze query execution plans.
+- Fetch only required columns (avoid `SELECT *`).
+- Use proper indexes for WHERE, JOIN, and ORDER BY.
+- Avoid functions on indexed columns in WHERE clauses.
+- Use LIMIT for large result sets.
+
+**Example:**
 ```sql
--- Not 1NF
-orders
-| id | products         |
-|----|-----------------|
-| 1  | mouse,keyboard  |
-
--- 1NF
-order_items
-| order_id | product   |
-|----------|-----------|
-| 1        | mouse     |
-| 1        | keyboard  |
+EXPLAIN SELECT id, name FROM users WHERE status = 'active' LIMIT 100;
 ```
 
-**Why?**
-- Prevents anomalies when inserting, updating, or deleting data.
-- Makes querying and reporting easier.
+### Index Plan
+- Index columns used in filters, joins, and sorts.
+- Use composite indexes for multi-column queries.
+- Drop unused or redundant indexes.
+- Monitor index usage and update as query patterns change.
+
+### Overall Plan: Normalization & Denormalization
+- Normalize for data integrity and update safety.
+- Denormalize for read performance (e.g., store user_email in orders for reporting).
+- Use materialized views or summary tables for heavy aggregations.
 
 ---
 
-### 2NF (Second Normal Form)
-- **Rule:** No partial dependency of any column on a composite primary key. All non-key attributes must depend on the whole key.
-- **How to Achieve:**
-  - Move attributes that depend only on part of the key to a separate table.
+## 5. SQL DB with JSON Data
+
+### Storing JSON in SQL
+- Most modern RDBMS (MySQL, PostgreSQL, SQL Server) support JSON columns.
+- Use JSON columns for semi-structured or flexible data (e.g., user preferences, metadata).
+
+**Example:**
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(100),
+  preferences JSON
+);
+
+-- Insert JSON data
+INSERT INTO users (id, name, preferences) VALUES (1, 'Alice', '{"theme": "dark", "lang": "en"}');
+
+-- Query JSON data
+SELECT * FROM users WHERE JSON_EXTRACT(preferences, '$.theme') = 'dark';
+```
+
+### When to Use JSON Columns
+- When the schema is flexible or changes frequently.
+- For storing metadata, settings, or logs.
+- Not for core relational data (use columns for indexed/filterable fields).
+
+---
+
+## 6. Key-Value Patterns in SQL (JSON Columns)
+
+- Use JSON columns to store key-value pairs for flexible attributes.
 - **Example:**
-  - Move product info from `order_items` to a `products` table.
-- **SQL Example:**
 ```sql
--- Not 2NF
-order_items
-| order_id | product_id | product_name |
-|----------|------------|--------------|
-| 1        | 101        | mouse        |
+CREATE TABLE product_attributes (
+  product_id BIGINT PRIMARY KEY,
+  attributes JSON
+);
 
--- 2NF
-order_items
-| order_id | product_id |
-|----------|------------|
-| 1        | 101        |
+-- Insert key-value data
+INSERT INTO product_attributes VALUES (101, '{"color": "red", "size": "M"}');
 
-products
-| product_id | product_name |
-|------------|--------------|
-| 101        | mouse        |
-```
-
-**Why?**
-- Prevents update anomalies and redundancy.
-
----
-
-### 3NF (Third Normal Form)
-- **Rule:** No transitive dependencies (non-key attributes depending on other non-key attributes).
-- **Bad Example:**
-  - `orders` table has `user_id` and `email` columns, but `email` depends on `user_id`.
-- **Fix:**
-  - Store `email` in the `users` table, not in `orders`.
-- **SQL Example:**
-```sql
--- Not 3NF
-orders
-| id | user_id | email        |
-|----|---------|--------------|
-| 1  | 10      | a@b.com      |
-
--- 3NF
-orders
-| id | user_id |
-|----|---------|
-| 1  | 10      |
-
-users
-| id | email   |
-|----|---------|
-| 10 | a@b.com |
-```
-
-**Why?**
-- Ensures each fact is stored only once, reducing inconsistency risk.
-
----
-
-### Denormalization
-
-**Denormalization** is the process of deliberately introducing redundancy for performance reasons, usually in read-heavy systems.
-
-- **Example:** Store `user_email` in the `orders` table for faster reads.
-- **SQL Example:**
-```sql
-orders
-| id | user_id | user_email   |
-|----|---------|--------------|
-| 1  | 10      | a@b.com      |
+-- Query for a specific key
+SELECT * FROM product_attributes WHERE JSON_EXTRACT(attributes, '$.color') = 'red';
 ```
 - **Trade-offs:**
-  - **Pros:** Faster reads, simpler queries.
-  - **Cons:** Manual consistency management, risk of stale data.
-
-**When to Use:**
-- When read performance is critical and data changes infrequently.
+  - Pros: Flexibility, easy to add new keys.
+  - Cons: Harder to index and query at scale; not suitable for high-performance analytics.
 
 ---
 
-## 2. Indexing Deep Dive
-
-**Indexes** speed up data retrieval at the cost of additional storage and slower writes.
-
-### Index Types
-- **Clustered Index:**
-  - Determines the physical order of data in the table (usually the primary key).
-  - **Example:**
-    - In SQL Server, the primary key is a clustered index by default.
-- **Non-clustered Index:**
-  - Separate structure for fast lookups; does not affect row order.
-  - **Example:**
-    - `CREATE INDEX idx_email ON users(email);`
-- **Composite Index:**
-  - Index on multiple columns. **Rule:** The left-most column(s) are most important for query performance.
-  - **Example:**
-    - `CREATE INDEX idx_user_status_created ON orders(user_id, status, created_at);`
-
-**Example Query Using Index:**
-```sql
-SELECT * FROM orders WHERE user_id = 10 AND status = 'PAID';
-```
-- This query will use the composite index above if available.
-
-**Why?**
-- Indexes make SELECT queries faster, but slow down INSERT/UPDATE/DELETE.
-
----
-
-### Common Indexing Mistakes
-- ❌ Over-indexing: Too many indexes slow down writes and use more storage.
-- ❌ Using functions on indexed columns in WHERE clauses: Prevents index usage (e.g., `WHERE LOWER(email) = 'a@b.com'`).
-
-**Best Practices:**
-- Index columns used in WHERE, JOIN, and ORDER BY clauses.
-- Regularly review and drop unused indexes.
-- **Example:**
-  - Remove unused index: `DROP INDEX idx_old ON orders;`
-
----
-
-## 3. Transactions Deep Dive
-
-**Transactions** ensure a sequence of operations is completed fully or not at all (ACID properties: Atomicity, Consistency, Isolation, Durability).
-
-### Isolation Levels
-
-| Level              | Problems Prevented         | Problems Allowed         |
-|--------------------|---------------------------|-------------------------|
-| Read Uncommitted   | None                      | Dirty reads             |
-| Read Committed     | Dirty reads               | Non-repeatable reads    |
-| Repeatable Read    | Non-repeatable reads      | Phantom reads           |
-| Serializable       | Phantom reads             | None                    |
-
-- **Dirty Read:** Reading uncommitted changes from another transaction.
-- **Non-repeatable Read:** Same query returns different results within a transaction.
-- **Phantom Read:** New rows added/removed by another transaction are seen in the current transaction.
-
-**Example:**
-```sql
--- Transaction 1
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
--- Transaction 2 (before commit)
-SELECT balance FROM accounts WHERE id = 1; -- May see uncommitted value (dirty read)
-```
-
-**Trade-off:** Higher isolation = fewer anomalies, but lower concurrency and performance.
-
----
-
-### Deadlocks
-
-A **deadlock** occurs when two or more transactions wait for each other to release locks, causing all to hang.
-
-**Prevention Techniques:**
-- Acquire locks in a consistent order.
-- Keep transactions short.
-- Implement retry logic for failed transactions.
-
-**Example:**
-```sql
--- Transaction 1
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
--- Transaction 2
-BEGIN;
-UPDATE accounts SET balance = balance + 100 WHERE id = 2;
--- Now both try to update the other's row, causing a deadlock
-```
-
-**Why?**
-- Prevents system stalls and improves reliability.
-
----
-
-## 4. NoSQL Deep Dive
-
-**NoSQL** databases are designed for scalability, flexibility, and high availability. They are often used when relational models are too rigid or slow for the use case.
-
-### Key Concepts
-- **Schema-less:** No fixed table structure; each record can have different fields.
-  - **Example:**
-    - MongoDB document: `{ "name": "Alice", "age": 30 }`
-- **Query-first design:** Data model is based on how data will be accessed.
-  - **Example:**
-    - Store user and their orders together in a document for fast retrieval.
-- **Horizontal scaling:** Easy to add more servers to handle more data/traffic.
-  - **Example:**
-    - Sharding in MongoDB or Cassandra.
-
----
-
-### NoSQL Types & Examples
-- **Key-Value:** Redis, DynamoDB
-  - **Example:**
-    - `SET user:1:name "Alice"` in Redis
-- **Document:** MongoDB, CouchDB
-  - **Example:**
-    - `{ "_id": 1, "name": "Alice", "orders": [1001, 1002] }`
-- **Column-family:** Cassandra, HBase
-  - **Example:**
-    - Table with dynamic columns per row: `user_id | name | email | ...`
-- **Graph:** Neo4j, ArangoDB
-  - **Example:**
-    - Nodes: User, Product; Edges: PURCHASED
-
----
-
-### DynamoDB Modeling Example
-
-- **PK (Partition Key):** `USER#1`
-- **SK (Sort Key):** `ORDER#2025-01-01`
-- **Example Item:**
-```json
-{
-  "PK": "USER#1",
-  "SK": "ORDER#2025-01-01",
-  "amount": 100,
-  "status": "PAID"
-}
-```
-
-**Design Principle:**
-- Model tables for access/query patterns, not for normalization.
-- Store related data together for efficient retrieval.
-
-**Why?**
-- Optimizes for performance and scalability in distributed systems.
-
----
-
-### Consistency Models
-- **Strong Consistency:** Reads always return the latest write.
-  - **Example:**
-    - DynamoDB with `ConsistentRead=true`
-- **Eventual Consistency:** Reads may return stale data, but will eventually be up-to-date.
-  - **Example:**
-    - Default read in DynamoDB or most NoSQL systems.
-
-**Trade-off:**
-- Strong consistency = higher latency, lower availability.
-- Eventual consistency = lower latency, higher availability.
-
----
-
-## Interview Tip
-
-When discussing database design in interviews, always explain:
-- **Why** you chose a particular design or technology.
-- The **trade-offs** involved (performance, consistency, complexity, etc.).
-- The **real-world impact** of your choices (scalability, maintainability, reliability).
-- **Example:**
-  - "I chose denormalization for the orders table to improve read performance, accepting the risk of data inconsistency, because our workload is 95% reads."
+## 7. Normalization, Denormalization, and Indexing (Summary)
+- Normalize for data integrity and update safety.
+- Denormalize for performance in read-heavy scenarios.
+- Use indexes to speed up queries, but avoid over-indexing.
+- Use JSON columns for flexible, non-core data.
+- Always have a backup and restore plan, and test it regularly.
 
 ---
 
