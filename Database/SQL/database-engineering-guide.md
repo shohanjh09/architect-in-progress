@@ -1,6 +1,6 @@
 # Database Engineering – Complete Interview & Reference Guide
 
-This guide covers **SQL + NoSQL fundamentals**, database design, performance, security, and system design concepts with **clear explanations and practical examples**. Use this as a reference for interviews and real-world engineering.
+This guide covers **SQL + NoSQL fundamentals**, database design, performance, security, and system design concepts with **clear explanations, practical examples, and diagrams**. Use this as a reference for interviews and real-world engineering.
 
 ---
 
@@ -11,6 +11,11 @@ A database is a system for **storing, querying, updating, and securing data** ef
 - **Reliability:** Data is safe from loss or corruption.
 - **Scalability:** Can handle growth in data and users.
 - **Security:** Protects data from unauthorized access.
+
+**Diagram: Database System Overview**
+```
+[App/API] <--> [DB Engine] <--> [Storage]
+```
 
 ---
 
@@ -26,6 +31,12 @@ A database is a system for **storing, querying, updating, and securing data** ef
 - **Features:** Flexible schema, horizontally scalable, optimized for specific access patterns (key-value, document, column, graph).
 - **Use cases:** Caching, event logs, real-time analytics, IoT, social feeds.
 
+**Diagram: SQL vs NoSQL**
+```
+[SQL] <--> [Tables, Rows, Columns]
+[NoSQL] <--> [Docs | Key-Value | Graph | Column]
+```
+
 ---
 
 ## 3. SQL vs NoSQL
@@ -36,6 +47,12 @@ A database is a system for **storing, querying, updating, and securing data** ef
 | Consistency | Strong           | Eventual/Tunable       |
 | Joins       | Supported        | Limited/None           |
 | Transactions| Full ACID        | Limited/Varies         |
+
+**Diagram: Scaling Approaches**
+```
+[SQL: Scale Up]
+[NoSQL: Scale Out --> Shards/Replicas]
+```
 
 **Example:**
 - SQL: `SELECT * FROM users WHERE email = 'a@b.com';`
@@ -48,6 +65,16 @@ A database is a system for **storing, querying, updating, and securing data** ef
 - **Consistency:** Database rules (constraints, triggers) are always preserved.
 - **Isolation:** Transactions do not interfere with each other.
 - **Durability:** Once committed, data survives crashes.
+
+**Diagram: ACID**
+```
++-----------+-----------+-----------+-----------+
+| Atomicity | Consistency | Isolation | Durability |
++-----------+-----------+-----------+-----------+
+|   All-or- |   Valid    |  No cross |  Survives |
+|  nothing  |  data      |  talk     |  crashes  |
++-----------+-----------+-----------+-----------+
+```
 
 **Example:**
 ```sql
@@ -66,6 +93,16 @@ In distributed systems, you can only guarantee two out of three:
 - **Availability:** Every request gets a response (may not be the latest data).
 - **Partition Tolerance:** System works even if network splits occur.
 
+**Diagram: CAP Triangle**
+```
+   Consistency
+      /   \
+     /     \
+    /       \
+   /         \
+Avail.------Partition
+```
+
 **Example:**
 - DynamoDB: Prioritizes Availability and Partition Tolerance (eventual consistency by default).
 - MongoDB: Can be tuned for Consistency or Availability.
@@ -80,6 +117,12 @@ In distributed systems, you can only guarantee two out of three:
 - `VARCHAR`, `TEXT` – Strings
 - `DATE`, `TIMESTAMP` – Dates and times
 - `JSON` – Semi-structured data
+
+**Diagram: Table Structure**
+```
+[Table]
+  | id | name | price | created_at
+```
 
 **Tip:** Always use the **smallest valid data type** for performance and storage efficiency.
 
@@ -100,6 +143,13 @@ CREATE TABLE products (
 - **One-to-Many:** One user has many orders.
 - **Many-to-Many:** Users can have many roles, and roles can belong to many users.
 
+**Diagram: Relationship Types**
+```
+[User]--(1:1)-->[Profile]
+[User]--(1:M)-->[Order]
+[User]--(M:N)-->[User_Role]<--(N:M)--[Role]
+```
+
 **Example (Many-to-Many):**
 ```sql
 CREATE TABLE user_roles (
@@ -114,6 +164,12 @@ CREATE TABLE user_roles (
 ## 8. DDL & DML
 - **DDL (Data Definition Language):** CREATE, ALTER, DROP (structure)
 - **DML (Data Manipulation Language):** INSERT, UPDATE, DELETE (data)
+
+**Diagram: DDL vs DML**
+```
+[DDL] --structure--> [Table]
+[DML] --data-------> [Table]
+```
 
 **Example:**
 ```sql
@@ -132,6 +188,15 @@ DELETE FROM customers WHERE id = 1;
 ## 9. Indexing (Overview)
 Indexes speed up reads but slow down writes. Use indexes on columns in WHERE, JOIN, and ORDER BY clauses.
 
+**Diagram: Index Structure**
+```
+[Table]
+  |
+  +---> [Index: B-Tree or Hash]
+           |
+           +---> [Pointers to rows]
+```
+
 **Example:**
 ```sql
 CREATE INDEX idx_orders_user ON orders(user_id);
@@ -148,6 +213,11 @@ SELECT * FROM orders WHERE user_id = 10;
 ## 10. Transactions
 Transactions group operations into a single unit. If any step fails, all changes are rolled back.
 
+**Diagram: Transaction Flow**
+```
+[Begin]--->[Step 1]--->[Step 2]--->...--->[Commit/Rollback]
+```
+
 **Example:**
 ```sql
 START TRANSACTION;
@@ -163,6 +233,11 @@ COMMIT;
 - **Incremental backups:** Only changes since the last backup.
 - **Binary logs:** Record all changes for point-in-time recovery.
 
+**Diagram: Backup/Restore Flow**
+```
+[DB]--(full/incremental)-->[Backup File]--(restore)-->[DB]
+```
+
 **Best Practice:** Always **test restore** to ensure backups are valid.
 
 **Example:**
@@ -176,6 +251,11 @@ COMMIT;
 - **RBAC (Role-Based Access Control):** Restricts user permissions.
 - **SQL injection prevention:** Use parameterized queries.
 - **Auditing:** Track who did what and when.
+
+**Diagram: Security Layers**
+```
+[App]--(auth)-->[DB]--(encryption)-->[Storage]
+```
 
 **Example:**
 ```sql
@@ -192,6 +272,11 @@ SELECT * FROM users WHERE email = ?;
 - Archive or purge old data to keep tables small and fast.
 - Regularly review and optimize indexes.
 - Test disaster recovery procedures.
+
+**Diagram: Monitoring & Maintenance**
+```
+[DB]---> [Metrics/Logs]---> [Dashboard/Alerting]
+```
 
 **Example:**
 - Use `EXPLAIN` to analyze query plans:

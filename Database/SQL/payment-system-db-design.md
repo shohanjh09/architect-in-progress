@@ -1,6 +1,6 @@
 # Payment System DB Design (High-Value, Production-Oriented)
 
-> **Goal:** Design a payment/ledger database that is **auditable**, **idempotent**, and safe under retries, concurrency, and partial failures. This guide explains the schema, design principles, and real-world examples for robust, production-grade payment systems.
+> **Goal:** Design a payment/ledger database that is **auditable**, **idempotent**, and safe under retries, concurrency, and partial failures. This guide explains the schema, design principles, and real-world examples for robust, production-grade payment systems. **Diagrams are included for key concepts.**
 
 ---
 
@@ -12,11 +12,29 @@ For money, always use an **append-only ledger**:
 - Enables full audit trails for compliance and fraud detection
 - Supports chargebacks, refunds, and corrections cleanly
 
+**Diagram: Double-Entry Ledger**
+```
++-----------+-----------+-----------+
+| account   | debit     | credit    |
++-----------+-----------+-----------+
+| user      | 100       | 0         |
+| platform  | 0         | 100       |
++-----------+-----------+-----------+
+```
+
 **Example:**
 - Instead of `UPDATE accounts SET balance = balance - 100`, insert a new ledger entry recording the debit.
 
 ### 1.2 Idempotency is mandatory
 Payment gateways and users may retry requests. Your DB must ensure **the same payment request cannot be applied twice**.
+
+**Diagram: Idempotency Flow**
+```
+[Request] --idempotency_key--> [DB]
+   |                              |
+   +---(retry, same key)--------->|
+   |<---(same result, no double effect)
+```
 
 **Example:**
 - Use an `idempotency_key` (unique per payment attempt) and enforce a unique constraint in the `payments` table. If a retry comes in, it is ignored or returns the same result.
@@ -33,6 +51,12 @@ Every business event is recorded as balanced entries (debit/credit) across accou
 
 ### 2.1 Accounts (logical buckets of money)
 Each account represents a user, platform, vendor, or escrow. Uniqueness is enforced per owner and currency.
+
+**Diagram: Account Relationships**
+```
+[User]---(has)--->[Account]<---(belongs to)---[Platform]
+```
+
 ```sql
 CREATE TABLE accounts (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -47,6 +71,19 @@ CREATE TABLE accounts (
 
 ### 2.2 Ledger Entries (append-only)
 Each row is a single side of a transaction (debit or credit). All money movement is recorded here.
+
+**Diagram: Ledger Entry Example**
+```
+[Ledger Entry]
+   |
+   +---> account_id: 101
+   +---> direction: DEBIT
+   +---> amount_cents: 5000
+   +---> currency: USD
+   +---> ref_type: order
+   +---> ref_id: 1001
+```
+
 ```sql
 CREATE TABLE ledger_entries (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -66,6 +103,20 @@ CREATE TABLE ledger_entries (
 
 ### 2.3 Payments (gateway interaction)
 Tracks payment attempts, status, and idempotency.
+
+**Diagram: Payment Table Schema**
+```
+[Payments Table]
+   |
+   +---> idempotency_key: VARCHAR(100)
+   +---> provider: VARCHAR(30)
+   +---> user_id: BIGINT
+   +---> order_id: BIGINT
+   +---> amount_cents: BIGINT
+   +---> currency: CHAR(3)
+   +---> status: ENUM('INIT','AUTHORIZED','CAPTURED','FAILED','REFUNDED','CHARGEBACK')
+```
+
 ```sql
 CREATE TABLE payments (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -87,6 +138,14 @@ CREATE TABLE payments (
 
 ### 2.4 Outbox (for reliable events)
 Implements the outbox pattern for reliable event publication (e.g., to message queues).
+
+**Diagram: Outbox Pattern**
+```
+[DB Transaction]
+     |
+     +---> [outbox_events table] --(async)--> [Message Queue/Event Bus]
+```
+
 ```sql
 CREATE TABLE outbox_events (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -105,6 +164,12 @@ CREATE TABLE outbox_events (
 ## 3. Money Flow Examples
 
 ### 3.1 Buyer pays for an order (capture)
+
+**Diagram: Payment Flow**
+```
+[Buyer Account] --debit--> [Ledger] --credit--> [Platform Escrow]
+```
+
 - Buyer account: DEBIT
 - Platform escrow: CREDIT
 
@@ -141,6 +206,11 @@ COMMIT;
 
 ## 4. Balance Calculation Options
 
+**Diagram: Balance Calculation**
+```
+[Ledger Entries] --SUM(debit/credit)--> [Balance]
+```
+
 ### 4.1 Compute-on-read (pure ledger)
 Recompute balance from all ledger entries for an account.
 ```sql
@@ -158,6 +228,13 @@ Maintain `account_balances(account_id, balance_cents)` updated within the same t
 
 ## 5. Concurrency, Locks, and Safety
 
+**Diagram: Locking for Consistency**
+```
+[Account 1] <---lock---> [Account 2]
+   |                        |
+   +----(consistent order)--+
+```
+
 ### 5.1 Avoid race conditions
 If maintaining cached balances, use:
 - `SELECT ... FOR UPDATE` on the balance row
@@ -172,6 +249,11 @@ To reduce deadlocks:
 
 ## 6. Auditing and Reconciliation
 
+**Diagram: Reconciliation**
+```
+[Provider Statement] <==compare==> [DB Ledger]
+```
+
 ### 6.1 Reconcile provider statements
 Store `provider_payment_id`, amounts, fees, timestamps. Compare gateway exports vs DB totals for reconciliation.
 
@@ -181,6 +263,12 @@ Ledger is append-only. If a correction is needed, add a correcting transaction (
 ---
 
 ## 7. Interview Questions (What to say)
+
+**Diagram: Safe Payment System**
+```
+[User Request]---> [Idempotency]---> [Ledger]---> [Outbox]---> [External Systems]
+```
+
 - **How do you prevent double charge?** → Idempotency key + unique constraint + transactional write
 - **How do you ensure auditability?** → Append-only ledger
 - **What about eventual events?** → Outbox pattern
@@ -189,6 +277,14 @@ Ledger is append-only. If a correction is needed, add a correcting transaction (
 ---
 
 ## 8. Common Pitfalls
+
+**Diagram: What NOT to do**
+```
+[Update balance directly]  X
+[No idempotency]           X
+[No ledger]                X
+```
+
 - Using `FLOAT` for money (use integer cents)
 - Updating balances without a ledger
 - No idempotency keys (risk of double charge)

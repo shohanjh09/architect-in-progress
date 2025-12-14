@@ -1,6 +1,6 @@
 # Transactions & Ledger Design (Deep Dive)
 
-This guide explains database transactions, isolation, deadlocks, and the ledger pattern for financial systems. Each section includes clear explanations, trade-offs, and practical SQL examples.
+This guide explains database transactions, isolation, deadlocks, and the ledger pattern for financial systems. Each section includes clear explanations, trade-offs, practical SQL examples, and diagrams for visual understanding.
 
 ---
 
@@ -12,6 +12,16 @@ A **transaction** is an atomic unit of work in a database. It ensures that a gro
 - **Consistency:** Data remains valid before and after.
 - **Isolation:** Concurrent transactions do not interfere.
 - **Durability:** Once committed, changes persist even after crashes.
+
+**Diagram: ACID Properties**
+```
++-----------+-----------+-----------+-----------+
+| Atomicity | Consistency | Isolation | Durability |
++-----------+-----------+-----------+-----------+
+|   All-or- |   Valid    |  No cross |  Survives |
+|  nothing  |  data      |  talk     |  crashes  |
++-----------+-----------+-----------+-----------+
+```
 
 **Example:**
 ```sql
@@ -34,6 +44,13 @@ Isolation levels control how/when changes made by one transaction become visible
 | Repeatable Read    | Non-repeatable reads| Phantom reads         |
 | Serializable       | Phantom reads       | None                  |
 
+**Diagram: Isolation Levels**
+```
+Read Uncommitted < Read Committed < Repeatable Read < Serializable
+      ^                 ^                ^                ^
+  Most concurrent   ...   ...      Most isolated
+```
+
 **Example:**
 - **Dirty Read:** Transaction A reads uncommitted changes from B.
 - **Non-repeatable Read:** Same query returns different results in one transaction.
@@ -49,9 +66,13 @@ SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 ## 3. Deadlocks
 A **deadlock** occurs when two or more transactions wait for each other to release locks, causing all to hang.
 
-**Example:**
-- Transaction 1 locks row A, then tries to lock row B.
-- Transaction 2 locks row B, then tries to lock row A.
+**Diagram: Deadlock**
+```
+Transaction 1: locks A, waits for B
+Transaction 2: locks B, waits for A
+   [A] <---waits--- [B]
+   [B] <---waits--- [A]
+```
 
 **Prevention:**
 - Always lock resources in the same order.
@@ -73,6 +94,16 @@ UPDATE accounts SET balance = balance + 100 WHERE id = 2;
 
 ## 4. Ledger Pattern (for Financial Systems)
 Never update balances directly. Use an **append-only ledger** to record all money movement. This enables full auditability and prevents lost updates.
+
+**Diagram: Ledger Pattern**
+```
++-----------+-----------+-----------+
+| account   | debit     | credit    |
++-----------+-----------+-----------+
+| user      | 100       | 0         |
+| merchant  | 0         | 100       |
++-----------+-----------+-----------+
+```
 
 **Ledger Table Example:**
 ```sql
@@ -98,6 +129,14 @@ SELECT SUM(credit - debit) AS balance FROM ledger WHERE account_id = 1;
 
 ## 5. Idempotency
 Idempotency ensures that retrying the same operation (e.g., payment) does not result in duplicate effects. This is critical for financial systems where network retries or user double-clicks are common.
+
+**Diagram: Idempotency**
+```
+[Request] --idempotency_key--> [DB]
+   |                              |
+   +---(retry, same key)--------->|
+   |<---(same result, no double effect)
+```
 
 **How to Implement:**
 - Use an `idempotency_key` (unique per request) and enforce a unique constraint.

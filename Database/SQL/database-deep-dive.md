@@ -1,6 +1,6 @@
 # Database Deep Dive – Normalization, Indexing, Transactions, JSON, Backup, and NoSQL
 
-This document explains **WHY things are designed in a certain way**, with trade-offs, diagrams, and real-world examples. It is structured to help engineers understand not just the *what*, but the *why* and *how* of database design decisions.
+This document explains **WHY things are designed in a certain way**, with trade-offs, diagrams, and real-world examples. It is structured to help engineers understand not just the *what*, but the *why* and *how* of database design decisions. **Diagrams are included for key concepts.**
 
 ---
 
@@ -11,6 +11,11 @@ This document explains **WHY things are designed in a certain way**, with trade-
 - **Denormalization:** Use for performance in read-heavy scenarios (see below).
 - **Choose data types carefully:** Use smallest valid types for performance and storage.
 - **Plan for growth:** Consider partitioning, sharding, and archiving strategies.
+
+**Diagram: ERD Example**
+```
+[User]--(1:M)-->[Order]--(M:1)-->[Product]
+```
 
 ---
 
@@ -33,6 +38,11 @@ This document explains **WHY things are designed in a certain way**, with trade-
 - **Incremental restore:** Apply the full backup, then replay incremental logs.
 
 **Best Practice:** Always test restores regularly to ensure backups are valid.
+
+**Diagram: Backup/Restore Flow**
+```
+[DB]--(full/incremental)-->[Backup File]--(restore)-->[DB]
+```
 
 ---
 
@@ -69,6 +79,11 @@ EXPLAIN SELECT id, name FROM users WHERE status = 'active' LIMIT 100;
 - Drop unused or redundant indexes.
 - Monitor index usage and update as query patterns change.
 
+**Diagram: Query Optimization Flow**
+```
+[Query]---> [Optimizer]---> [Plan: Index Scan/Table Scan]---> [Result]
+```
+
 ### Overall Plan: Normalization & Denormalization
 - Normalize for data integrity and update safety.
 - Denormalize for read performance (e.g., store user_email in orders for reporting).
@@ -102,6 +117,12 @@ SELECT * FROM users WHERE JSON_EXTRACT(preferences, '$.theme') = 'dark';
 - For storing metadata, settings, or logs.
 - Not for core relational data (use columns for indexed/filterable fields).
 
+**Diagram: JSON Column Usage**
+```
+[Table]
+  | id | name | preferences (JSON)
+```
+
 ---
 
 ## 6. Key-Value Patterns in SQL (JSON Columns)
@@ -124,6 +145,11 @@ SELECT * FROM product_attributes WHERE JSON_EXTRACT(attributes, '$.color') = 're
   - Pros: Flexibility, easy to add new keys.
   - Cons: Harder to index and query at scale; not suitable for high-performance analytics.
 
+**Diagram: Key-Value in JSON**
+```
+[product_id] | { "color": "red", "size": "M" }
+```
+
 ---
 
 ## 7. Normalization, Denormalization, and Indexing (Summary)
@@ -132,6 +158,12 @@ SELECT * FROM product_attributes WHERE JSON_EXTRACT(attributes, '$.color') = 're
 - Use indexes to speed up queries, but avoid over-indexing.
 - Use JSON columns for flexible, non-core data.
 - Always have a backup and restore plan, and test it regularly.
+
+**Diagram: Normalization vs Denormalization**
+```
+[Normalized: Many tables, less redundancy]
+[Denormalized: Fewer tables, more redundancy]
+```
 
 ---
 

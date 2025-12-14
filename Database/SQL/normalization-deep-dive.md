@@ -1,6 +1,6 @@
 # Normalization Deep Dive (1NF → 5NF)
 
-Normalization is the process of structuring a relational database to reduce redundancy and improve data integrity. Each normal form addresses specific types of anomalies and inefficiencies. Below, each form is explained with practical examples and trade-offs.
+Normalization is the process of structuring a relational database to reduce redundancy and improve data integrity. Each normal form addresses specific types of anomalies and inefficiencies. Below, each form is explained with practical examples, trade-offs, and diagrams for visual understanding.
 
 ---
 
@@ -11,13 +11,39 @@ Normalization prevents:
 - **Delete anomalies:** Unintended data loss when deleting records.
 - **Insert anomalies:** Difficulty adding new data due to missing other data.
 
-**Example:**
-If a user's email is stored in both `orders` and `users`, updating the email in one place but not the other causes inconsistency.
+**Diagram: Update Anomaly**
+```
++---------+---------+-------------+
+| orderid | user_id | user_email  |
++---------+---------+-------------+
+|   1     |   10    | a@b.com     |
+|   2     |   10    | a@b.com     |
++---------+---------+-------------+
+# If user_email changes in one row but not the other, data is inconsistent.
+```
 
 ---
 
 ## 1NF – Atomic Values
 **Rule:** Each column must contain only indivisible (atomic) values. No arrays or lists in a single field.
+
+**Diagram: 1NF**
+```
+orders
++----+-----------------+
+| id | products        |
++----+-----------------+
+| 1  | mouse,keyboard  |
++----+-----------------+
+
+order_items
++----------+---------+
+|order_id  | product |
++----------+---------+
+|   1      | mouse   |
+|   1      | keyboard|
++----------+---------+
+```
 
 ❌ **Bad:**
 | order_id | products         |
@@ -54,6 +80,30 @@ order_items
 ## 2NF – No Partial Dependency
 **Rule:** Every non-key attribute must depend on the whole of every candidate key (no partial dependency on a composite key).
 
+**Diagram: 2NF**
+```
+order_items (Not 2NF)
++----------+------------+--------------+
+|order_id  |product_id  |product_name  |
++----------+------------+--------------+
+|   1      |   101      | mouse        |
++----------+------------+--------------+
+
+order_items (2NF)
++----------+------------+
+|order_id  |product_id  |
++----------+------------+
+|   1      |   101      |
++----------+------------+
+
+products
++------------+--------------+
+|product_id  |product_name  |
++------------+--------------+
+|   101      | mouse        |
++------------+--------------+
+```
+
 ❌ **Bad:**
 - Table: `order_items(order_id, product_id, product_name)`
 - `product_name` depends only on `product_id`, not the full key `(order_id, product_id)`.
@@ -86,6 +136,30 @@ products
 
 ## 3NF – No Transitive Dependency
 **Rule:** No non-key attribute depends on another non-key attribute (no transitive dependency).
+
+**Diagram: 3NF**
+```
+orders (Not 3NF)
++----+---------+--------------+
+| id | user_id | user_email   |
++----+---------+--------------+
+| 1  | 10      | a@b.com      |
++----+---------+--------------+
+
+orders (3NF)
++----+---------+
+| id | user_id |
++----+---------+
+| 1  | 10      |
++----+---------+
+
+users
++----+---------+
+| id | email   |
++----+---------+
+| 10 | a@b.com |
++----+---------+
+```
 
 ❌ **Bad:**
 - Table: `orders(order_id, user_id, user_email)`
@@ -120,6 +194,19 @@ users
 ## BCNF (Boyce-Codd Normal Form)
 **Rule:** Every determinant is a candidate key. Handles certain edge cases not covered by 3NF, especially when there are multiple candidate keys.
 
+**Diagram: BCNF Example**
+```
+courses
++--------+------------+------+
+| course | instructor | room |
++--------+------------+------+
+| Math   | Smith      | 101  |
+| Math   | Smith      | 102  |
+| CS     | Jones      | 101  |
++--------+------------+------+
+# Decompose to avoid anomalies.
+```
+
 **Example:**
 - Table: `courses(course, instructor, room)`
 - If each course is taught by one instructor, and each room is assigned to one instructor, but an instructor can teach multiple courses in different rooms, BCNF helps split the table to avoid anomalies.
@@ -128,6 +215,35 @@ users
 
 ## 4NF – No Multi-Valued Dependencies
 **Rule:** No table should have two or more independent multi-valued facts about an entity.
+
+**Diagram: 4NF**
+```
+student_courses_hobbies (Not 4NF)
++-----------+--------+--------+
+|student_id | course | hobby  |
++-----------+--------+--------+
+|    1      | Math   | Chess  |
+|    1      | Math   | Music  |
+|    1      | CS     | Chess  |
+|    1      | CS     | Music  |
++-----------+--------+--------+
+
+student_courses (4NF)
++-----------+--------+
+|student_id | course |
++-----------+--------+
+|    1      | Math   |
+|    1      | CS     |
++-----------+--------+
+
+student_hobbies (4NF)
++-----------+--------+
+|student_id | hobby  |
++-----------+--------+
+|    1      | Chess  |
+|    1      | Music  |
++-----------+--------+
+```
 
 **Example:**
 - Table: `student_courses_hobbies(student_id, course, hobby)`
@@ -140,6 +256,12 @@ users
 ## 5NF – Join Dependency
 **Rule:** Decompose tables only when necessary to eliminate redundancy, but only if the original table can be reconstructed by joining the decomposed tables.
 
+**Diagram: 5NF**
+```
+# Used in rare, complex cases with three or more independent many-to-many relationships.
+# Visual: Table decomposed into three tables, all joined by a common key.
+```
+
 **Example:**
 - Used in rare, complex cases such as when a table describes three or more many-to-many relationships that are independent.
 
@@ -147,6 +269,17 @@ users
 
 ## Denormalization
 **Definition:** The deliberate introduction of redundancy for performance reasons, often in read-heavy systems.
+
+**Diagram: Denormalization**
+```
+orders
++----+---------+--------------+
+| id | user_id | user_email   |
++----+---------+--------------+
+| 1  | 10      | a@b.com      |
++----+---------+--------------+
+# user_email is duplicated for fast reads.
+```
 
 **When to Use:**
 - Reporting, analytics, dashboards

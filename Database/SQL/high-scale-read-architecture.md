@@ -1,6 +1,6 @@
 # High-Scale Read Architecture (DB + Cache + Search + Replicas)
 
-> **Goal:** Serve read-heavy traffic with low latency while maintaining data correctness where needed. This guide explains the strategies, trade-offs, and practical examples for designing scalable, high-performance read architectures.
+> **Goal:** Serve read-heavy traffic with low latency while maintaining data correctness where needed. This guide explains the strategies, trade-offs, and practical examples for designing scalable, high-performance read architectures. **Diagrams are included for key concepts.**
 
 ---
 
@@ -12,6 +12,11 @@ Before optimizing, analyze your system's read requirements:
 - **Cacheability:** Can the data be cached, and for how long?
 - **Consistency requirements:** Is it okay to show slightly stale data?
 
+**Diagram: Read Pattern Analysis**
+```
+[User/API]---> [Endpoint]---> [Query Type]---> [Table(s)]
+```
+
 **Example:**
 - Home feed (high volume, can tolerate some staleness)
 - User profile page (personalized, needs fresher data)
@@ -21,6 +26,15 @@ Before optimizing, analyze your system's read requirements:
 
 ## 2. Read Replicas
 Read replicas offload read traffic from the primary database.
+
+**Diagram: Read Replica Architecture**
+```
+[Primary DB] --(async replication)--> [Read Replica 1]
+           \--(async replication)--> [Read Replica 2]
+           \--(async replication)--> [Read Replica N]
+                |
+                +---> [Read Queries]
+```
 
 ### How it Works
 - **Primary** handles all writes.
@@ -44,6 +58,13 @@ Read replicas offload read traffic from the primary database.
 
 ## 3. Caching Strategies
 Caching reduces database load and improves response times.
+
+**Diagram: Cache-Aside Pattern**
+```
+[App]--(read)-->[Cache]--(miss)-->[DB]
+   |<-----------------------------|
+   |--(write)-->[Cache]           |
+```
 
 ### 3.1 Cache-Aside (Lazy Loading)
 - Application checks cache first.
@@ -70,6 +91,11 @@ return value
 
 ## 4. Cache Keys and Invalidation
 
+**Diagram: Cache Invalidation**
+```
+[Write/Update]---> [Invalidate Cache Key]
+```
+
 ### Key Design
 - Use versioning: `user:10:v2`
 - Include context: `feed:10:en:USD` (user, language, currency)
@@ -90,6 +116,12 @@ return value
 ---
 
 ## 5. Materialized Views / Denormalized Tables
+
+**Diagram: Materialized View**
+```
+[Base Tables]--(precompute/refresh)-->[Materialized View]
+```
+
 Precompute and store results of expensive queries or joins.
 
 **Examples:**
@@ -108,6 +140,12 @@ GROUP BY day;
 ---
 
 ## 6. Search Separation
+
+**Diagram: Search Pipeline**
+```
+[DB]--(CDC/Outbox)-->[Search Index]
+```
+
 Use a dedicated search engine for full-text and complex search queries.
 
 **Pattern:**
@@ -121,6 +159,15 @@ Use a dedicated search engine for full-text and complex search queries.
 ---
 
 ## 7. Pagination at Scale
+
+**Diagram: Seek Pagination**
+```
+[Table]
+  | id < last_seen_id
+  | ORDER BY id DESC
+  | LIMIT N
+```
+
 Avoid OFFSET for large datasets; use seek/"keyset" pagination.
 
 **Bad (slow for large offsets):**
@@ -140,6 +187,14 @@ SELECT * FROM posts WHERE id < 900000 ORDER BY id DESC LIMIT 50;
 ---
 
 ## 8. Hotspot Reduction
+
+**Diagram: Sharding/Partitioning**
+```
+[Table]--(shard by user_id/time)-->[Shard 1]
+                                 \->[Shard 2]
+                                 \->[Shard N]
+```
+
 Distribute load to avoid bottlenecks.
 
 ### Techniques
@@ -154,6 +209,12 @@ Distribute load to avoid bottlenecks.
 ---
 
 ## 9. Observability
+
+**Diagram: Monitoring Flow**
+```
+[DB/Cache/Replica]---> [Metrics/Logs]---> [Dashboard/Alerting]
+```
+
 Monitor and measure system health and performance.
 
 **Track:**
@@ -170,6 +231,18 @@ Monitor and measure system health and performance.
 ---
 
 ## 10. Interview Summary
+
+**Diagram: High-Scale Read System**
+```
+[User/API]
+   |
+   v
+[Cache]--(miss)-->[Read Replica]--(miss)-->[Primary DB]
+   |
+   v
+[Materialized View/Search Index]
+```
+
 - Use replicas for scale (offload reads)
 - Use caching for latency (fast responses)
 - Use denormalized tables/materialized views for heavy joins
